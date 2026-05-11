@@ -20,6 +20,8 @@ public interface AdminService {
 
     UserVo updateUser(Long userId, AdminUpdateUserRequest request);
 
+    UserVo promoteUserToAdmin(Long userId);
+
     List<ResumePo> resumes();
 
     List<InterviewSessionPo> interviews();

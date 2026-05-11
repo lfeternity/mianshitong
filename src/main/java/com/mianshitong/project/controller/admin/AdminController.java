@@ -44,6 +44,11 @@ public class AdminController {
         return ApiResult.ok(adminService.updateUser(userId, request));
     }
 
+    @PutMapping("/users/{userId}/promote-admin")
+    public ApiResult<UserVo> promoteUserToAdmin(@PathVariable Long userId) {
+        return ApiResult.ok(adminService.promoteUserToAdmin(userId));
+    }
+
     @GetMapping("/resumes")
     public ApiResult<List<ResumePo>> resumes() {
         return ApiResult.ok(adminService.resumes());

@@ -2,6 +2,7 @@ import client from "@/api/client";
 
 export const listAdminUsersApi = () => client.get("/admin/users");
 export const updateAdminUserApi = (userId, payload) => client.put(`/admin/users/${userId}`, payload);
+export const promoteAdminUserApi = (userId) => client.put(`/admin/users/${userId}/promote-admin`);
 
 export const listAdminResumesApi = () => client.get("/admin/resumes");
 export const listAdminInterviewsApi = () => client.get("/admin/interviews");

@@ -65,6 +65,18 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
+    public UserVo promoteUserToAdmin(Long userId) {
+        UserPo user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new BizException("用户不存在");
+        }
+        user.setRole(UserRole.ADMIN);
+        user.setEnabled(true);
+        userMapper.updateById(user);
+        return toVo(user);
+    }
+
+    @Override
     public List<ResumePo> resumes() {
         return resumeMapper.selectList(
             new LambdaQueryWrapper<ResumePo>().orderByDesc(ResumePo::getUploadedAt)

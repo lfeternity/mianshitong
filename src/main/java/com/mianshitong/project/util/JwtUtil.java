@@ -6,16 +6,26 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.Date;
 import javax.crypto.SecretKey;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class JwtUtil {
 
     private static final String KNOWN_WEAK_SECRET = "please-change-this-jwt-secret-minimum-32-bytes-long";
+    private static final String KNOWN_EXAMPLE_SECRET = "replace-with-a-random-secret-at-least-32-bytes";
+    private static final int MIN_SECRET_BYTES = 32;
+
+    private final Environment environment;
 
     @Value("${app.jwt.secret}")
     private String secret;
@@ -27,17 +37,30 @@ public class JwtUtil {
 
     @PostConstruct
     public void init() {
-        if (secret == null || secret.isBlank()) {
-            throw new IllegalStateException("JWT 密钥未配置，请设置环境变量 JWT_SECRET");
+        if (isUnconfiguredSecret(secret)) {
+            if (environment.acceptsProfiles(Profiles.of("prod"))) {
+                throw new IllegalStateException("JWT 密钥未配置，请设置环境变量 JWT_SECRET");
+            }
+            secret = generateDevelopmentSecret();
         }
-        if (KNOWN_WEAK_SECRET.equals(secret)) {
+        if (KNOWN_WEAK_SECRET.equals(secret) || KNOWN_EXAMPLE_SECRET.equals(secret)) {
             throw new IllegalStateException("JWT 密钥使用了已知弱默认值，请替换为随机高强度密钥");
         }
         byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
-        if (keyBytes.length < 32) {
-            throw new IllegalStateException("JWT 密钥长度不足，至少需要 32 字节");
+        if (keyBytes.length < MIN_SECRET_BYTES) {
+            throw new IllegalStateException("JWT 密钥长度不足，至少需要 " + MIN_SECRET_BYTES + " 字节");
         }
         signingKey = Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    private boolean isUnconfiguredSecret(String value) {
+        return value == null || value.isBlank() || KNOWN_EXAMPLE_SECRET.equals(value);
+    }
+
+    private String generateDevelopmentSecret() {
+        byte[] keyBytes = new byte[MIN_SECRET_BYTES];
+        new SecureRandom().nextBytes(keyBytes);
+        return Base64.getEncoder().encodeToString(keyBytes);
     }
 
     public String generateToken(AuthUser user) {

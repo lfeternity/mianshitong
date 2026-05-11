@@ -1,20 +1,29 @@
 <template>
   <div class="page-shell admin-page">
-    <section-panel kicker="Admin" title="用户管理" subtitle="启用状态、目标岗位维护">
+    <section-panel kicker="Admin" title="用户管理" subtitle="启用状态、角色与目标岗位维护">
       <el-table :data="pagedUsers" stripe>
         <el-table-column prop="id" label="ID" width="90" />
         <el-table-column prop="email" label="邮箱" min-width="220" />
         <el-table-column prop="nickname" label="昵称" width="140" />
-        <el-table-column prop="role" label="角色" width="110" />
+        <el-table-column label="角色" width="120">
+          <template #default="{ row }">
+            <el-tag :type="row.role === 'ADMIN' ? 'warning' : 'info'">{{ roleLabel(row.role) }}</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="targetPosition" label="目标岗位" min-width="200" />
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="row.enabled ? 'success' : 'danger'">{{ row.enabled ? "启用" : "禁用" }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="130">
+        <el-table-column label="操作" width="210" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" @click="editRow(row)">编辑</el-button>
+            <div class="row-actions">
+              <el-button size="small" @click="editRow(row)">编辑</el-button>
+              <el-button v-if="row.role === 'USER'" size="small" type="primary" @click="promoteRow(row)">
+                升为管理员
+              </el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -49,9 +58,9 @@
 
 <script setup>
 import { computed, onMounted, ref } from "vue";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 import SectionPanel from "@/components/common/SectionPanel.vue";
-import { listAdminUsersApi, updateAdminUserApi } from "@/api/admin";
+import { listAdminUsersApi, promoteAdminUserApi, updateAdminUserApi } from "@/api/admin";
 
 const users = ref([]);
 const visible = ref(false);
@@ -88,6 +97,10 @@ function editRow(row) {
   visible.value = true;
 }
 
+function roleLabel(role) {
+  return role === "ADMIN" ? "管理员" : "普通用户";
+}
+
 async function save() {
   if (!form.value) return;
   try {
@@ -97,6 +110,26 @@ async function save() {
     });
     ElMessage.success("保存成功");
     visible.value = false;
+    await fetchUsers();
+  } catch (error) {
+    ElMessage.error(error.message);
+  }
+}
+
+async function promoteRow(row) {
+  const confirmed = await ElMessageBox.confirm(
+    `确认将 ${row.email} 升级为管理员吗？升级后该账号会获得管理员端权限。`,
+    "升级管理员",
+    {
+      confirmButtonText: "确认升级",
+      cancelButtonText: "取消",
+      type: "warning"
+    }
+  ).then(() => true).catch(() => false);
+  if (!confirmed) return;
+  try {
+    await promoteAdminUserApi(row.id);
+    ElMessage.success("已升级为管理员");
     await fetchUsers();
   } catch (error) {
     ElMessage.error(error.message);
@@ -114,6 +147,12 @@ async function save() {
   margin-top: 12px;
   display: flex;
   justify-content: flex-end;
+}
+
+.row-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .hint {

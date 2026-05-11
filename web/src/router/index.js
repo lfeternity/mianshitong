@@ -63,12 +63,19 @@ const router = createRouter({
   routes
 });
 
+let profileSynced = false;
+
 router.beforeEach(async (to) => {
   const authStore = useAuthStore();
-  if (authStore.token && !authStore.user) {
+  if (!authStore.token) {
+    profileSynced = false;
+  }
+  if (authStore.token && (!authStore.user || !profileSynced || to.meta.requiresAdmin)) {
     try {
       await authStore.fetchProfile();
+      profileSynced = true;
     } catch {
+      profileSynced = false;
       await authStore.logout();
     }
   }
